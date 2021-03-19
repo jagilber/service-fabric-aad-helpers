@@ -90,7 +90,7 @@ else {
 }
 
 # comment next line after microsoft.identity.client type has been imported into powershell session to troubleshoot 1 of 2
-invoke-expression @'
+#invoke-expression @'
 
 class MsalLogon {
     [string]$identityPackageLocation = $identityPackageLocation
@@ -110,15 +110,22 @@ class MsalLogon {
     MsalLogon() { }
     static MsalLogon() { }
 
+    [bool] Logon() {
+        return $this.Logon($null)
+    }
 
     [bool] Logon([string]$resourceUrl) {
+        return $this.Logon($resourceUrl, $null)
+    }
+
+    [bool] Logon([string]$resourceUrl, [string[]]$scopes) {
         [int]$expirationRefreshMinutes = 15
         [int]$expirationMinutes = 0
 
-        if (!$resourceUrl) {
-            write-warning "-resourceUrl required. example: https://{{ kusto cluster }}.kusto.windows.net"
-            return $false
-        }
+        # if (!$resourceUrl) {
+        #     write-warning "-resourceUrl required. example: https://{{ kusto cluster }}.kusto.windows.net"
+        #     return $false
+        # }
 
         if ($this.authenticationResult) {
             $expirationMinutes = $this.authenticationResult.ExpiresOn.Subtract((get-date)).TotalMinutes
@@ -129,10 +136,10 @@ class MsalLogon {
             write-verbose "token valid: $($this.authenticationResult.ExpiresOn). use -force to force logon"
             return $true
         }
-        return $this.LogonMsal($resourceUrl, @())
+        return $this.LogonMsal($resourceUrl, $scopes)
     }
 
-    [bool] LogonMsal([string]$resourceUrl, [string[]]$scopes) {
+    hidden [bool] LogonMsal([string]$resourceUrl, [string[]]$scopes) {
         try {
             $error.Clear()
             [string[]]$defaultScope = @(".default")
@@ -244,7 +251,7 @@ class MsalLogon {
 }
 
 # comment next line after microsoft.identity.client type has been imported into powershell session to troubleshoot 2 of 2
-'@ 
+#'@ 
 
 $error.Clear()
 $global:msal = [MsalLogon]::new()

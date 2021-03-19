@@ -8,13 +8,13 @@ Common script, do not call it directly.
 
 function logon-msal() {
     write-host "msal importing msal-logon script"
-    . "$PSScriptRoot\msal-logon"
+    . "$PSScriptRoot\msal-logon.ps1"
     if (!$global:msal) {
         Write-error "error getting token."
     }
 
     write-host "msal requesting authorization"
-    $global:msal.Logon($resourceUrl)
+    $global:msal.Logon($resourceUrl, $resourceUrl)
     $msalResults = $global:msal.authenticationResult
     write-host "msal results $($msalResults | convertto-json)"
     return $msalResults
@@ -41,17 +41,17 @@ function AssertNotNull($obj, $msg) {
 # Regional settings
 switch ($Location) {
     "china" {
-        $resourceUrl = "https://graph.chinacloudapi.cn"
+        $resourceUrl = "https://graph.microsoft.com/.default"
         $authString = "https://login.partner.microsoftonline.cn/" + $TenantId
     }
     
     "germany" {
-        $resourceUrl = "https://graph.cloudapi.de"
+        $resourceUrl = "https://graph.microsoft.com/.default"
         $authString = "https://login.microsoftonline.de/" + $TenantId   
     }
 
     default {
-        $resourceUrl = "https://graph.windows.net"
+        $resourceUrl = "https://graph.microsoft.com/.default"
         $authString = "https://login.microsoftonline.com/" + $TenantId
     }
 }
