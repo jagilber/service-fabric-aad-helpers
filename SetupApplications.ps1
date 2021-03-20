@@ -51,40 +51,40 @@ Setup and save the setup result into a temporary variable to pass into SetupUser
 
 Param
 (
-    [Parameter(ParameterSetName='Customize',Mandatory=$true)]
-    [Parameter(ParameterSetName='Prefix',Mandatory=$true)]
+    [Parameter(ParameterSetName = 'Customize', Mandatory = $true)]
+    [Parameter(ParameterSetName = 'Prefix', Mandatory = $true)]
     [String]
-	$TenantId,
+    $TenantId,
 
-    [Parameter(ParameterSetName='Customize')]	
-	[String]
-	$WebApplicationName,
+    [Parameter(ParameterSetName = 'Customize')]	
+    [String]
+    $WebApplicationName,
 
-    [Parameter(ParameterSetName='Customize')]
-	[String]
-	$WebApplicationUri,
+    [Parameter(ParameterSetName = 'Customize')]
+    [String]
+    $WebApplicationUri,
 
-    [Parameter(ParameterSetName='Customize',Mandatory=$true)]
-    [Parameter(ParameterSetName='Prefix',Mandatory=$true)]
-	[String]
+    [Parameter(ParameterSetName = 'Customize', Mandatory = $true)]
+    [Parameter(ParameterSetName = 'Prefix', Mandatory = $true)]
+    [String]
     $WebApplicationReplyUrl,
 	
-    [Parameter(ParameterSetName='Customize')]
-	[String]
-	$NativeClientApplicationName,
+    [Parameter(ParameterSetName = 'Customize')]
+    [String]
+    $NativeClientApplicationName,
 
-    [Parameter(ParameterSetName='Prefix',Mandatory=$true)]
+    [Parameter(ParameterSetName = 'Prefix', Mandatory = $true)]
     [String]
     $ClusterName,
 
-    [Parameter(ParameterSetName='Prefix')]
-    [Parameter(ParameterSetName='Customize')]
-    [ValidateSet('china','germany')]
+    [Parameter(ParameterSetName = 'Prefix')]
+    [Parameter(ParameterSetName = 'Customize')]
+    [ValidateSet('china', 'germany')]
     [String]
     $Location,
 
-    [Parameter(ParameterSetName='Customize')]
-    [Parameter(ParameterSetName='Prefix')]
+    [Parameter(ParameterSetName = 'Customize')]
+    [Parameter(ParameterSetName = 'Prefix')]
     [Switch]
     $AddResourceAccess
 )
@@ -93,75 +93,71 @@ Write-Host 'TenantId = ' $TenantId
 
 . "$PSScriptRoot\Common.ps1"
 
-$graphAPIFormat = $resourceUrl + "/v1.0/" + $TenantId + "/{0}?" #api-version=1.5"
+$graphAPIFormat = $resourceUrl + "/v1.0/" + $TenantId + "/{0}" #api-version=1.5"
 $ConfigObj = @{}
 $ConfigObj.TenantId = $TenantId
 
 $appRole = 
 @{
     allowedMemberTypes = @("User")
-    description = "ReadOnly roles have limited query access"
-    displayName = "ReadOnly"
-    id = [guid]::NewGuid()
-    isEnabled = "true"
-    value = "User"
+    description        = "ReadOnly roles have limited query access"
+    displayName        = "ReadOnly"
+    id                 = [guid]::NewGuid()
+    isEnabled          = "true"
+    value              = "User"
 },
 @{
     allowedMemberTypes = @("User")
-    description = "Admins can manage roles and perform all task actions"
-    displayName = "Admin"
-    id = [guid]::NewGuid()
-    isEnabled = "true"
-    value = "Admin"
+    description        = "Admins can manage roles and perform all task actions"
+    displayName        = "Admin"
+    id                 = [guid]::NewGuid()
+    isEnabled          = "true"
+    value              = "Admin"
 }
 
 $requiredResourceAccess =
 @(@{
-    resourceAppId = "00000002-0000-0000-c000-000000000000"
-    resourceAccess = @(@{
-        id = "311a71cc-e848-46a1-bdf8-97ff7156d8e6"
-        type= "Scope"
+        resourceAppId  = "00000002-0000-0000-c000-000000000000"
+        resourceAccess = @(@{
+                id   = "311a71cc-e848-46a1-bdf8-97ff7156d8e6"
+                type = "Scope"
+            })
     })
-})
 
-if (!$WebApplicationName)
-{
-	$WebApplicationName = "ServiceFabricCluster"
+if (!$WebApplicationName) {
+    $WebApplicationName = "ServiceFabricCluster"
 }
 
-if (!$WebApplicationUri)
-{
-	$WebApplicationUri = "https://ServiceFabricCluster"
+if (!$WebApplicationUri) {
+    $WebApplicationUri = "https://ServiceFabricCluster"
 }
 
-if (!$NativeClientApplicationName)
-{
-	$NativeClientApplicationName =  "ServiceFabricClusterNativeClient"
+if (!$NativeClientApplicationName) {
+    $NativeClientApplicationName = "ServiceFabricClusterNativeClient"
 }
 
 #Create Web Application
 $uri = [string]::Format($graphAPIFormat, "applications")
 
 $webApp = @{}
-If($AddResourceAccess)
-{
+If ($AddResourceAccess) {
     $webApp = @{
-        displayName = $WebApplicationName
-        identifierUris = @($WebApplicationUri)
-        homepage = $WebApplicationReplyUrl #Not functionally needed. Set by default to avoid AAD portal UI displaying error
-        replyUrls = @($WebApplicationReplyUrl)
-        appRoles = $appRole
+        displayName            = $WebApplicationName
+        identifierUris         = @($WebApplicationUri)
+        #signInUrl = $WebApplicationReplyUrl #Not functionally needed. Set by default to avoid AAD portal UI displaying error
+        #replyUrls              = @($WebApplicationReplyUrl)
+        appRoles               = $appRole
         requiredResourceAccess = $requiredResourceAccess
     }
 }
-Else
-{
+Else {
     $webApp = @{
-        displayName = $WebApplicationName
+        displayName    = $WebApplicationName
         identifierUris = @($WebApplicationUri)
-        homepage = $WebApplicationReplyUrl #Not functionally needed. Set by default to avoid AAD portal UI displaying error
-        replyUrls = @($WebApplicationReplyUrl)
-        appRoles = $appRole
+        #signInUrl = $WebApplicationReplyUrl #Not functionally needed. Set by default to avoid AAD portal UI displaying error
+        #replyUrls      = @($WebApplicationReplyUrl)
+        #replyUrlsWithType      = @(@{url=$WebApplicationReplyUrl;type="InstalledClient"})
+        appRoles       = $appRole
     }
 }
 
@@ -177,14 +173,14 @@ if (-not $user_impersonation_scope) {
     $patchApplicationUri = $graphAPIFormat -f ("applications/{0}" -f $webApp.objectId)
     $webApp.oauth2Permissions = @($webApp.oauth2Permissions)
     $webApp.oauth2Permissions += @{
-        "id" = [guid]::NewGuid()
-        "isEnabled" = $true
-        "type" = "User"
+        "id"                      = [guid]::NewGuid()
+        "isEnabled"               = $true
+        "type"                    = "User"
         "adminConsentDescription" = ("Allow the application to access {0} on behalf of the signed-in user." -f $WebApplicationName)
         "adminConsentDisplayName" = ("Access {0}" -f $WebApplicationName)
-        "userConsentDescription" = ("Allow the application to access {0} on your behalf." -f $WebApplicationName)
-        "userConsentDisplayName" = ("Access {0}"-f $WebApplicationName)
-        "value" = "user_impersonation"
+        "userConsentDescription"  = ("Allow the application to access {0} on your behalf." -f $WebApplicationName)
+        "userConsentDisplayName"  = ("Access {0}" -f $WebApplicationName)
+        "value"                   = "user_impersonation"
     }
     CallGraphAPI -uri $patchApplicationUri -method "Patch" -headers $headers -body @{ 
         "oauth2Permissions" = $webApp.oauth2Permissions
@@ -194,9 +190,9 @@ if (-not $user_impersonation_scope) {
 #Service Principal
 $uri = [string]::Format($graphAPIFormat, "servicePrincipals")
 $servicePrincipal = @{
-    accountEnabled = "true"
-    appId = $webApp.appId
-    displayName = $webApp.displayName
+    accountEnabled            = "true"
+    appId                     = $webApp.appId
+    displayName               = $webApp.displayName
     appRoleAssignmentRequired = "true"
 }
 $servicePrincipal = CallGraphAPI $uri $headers $servicePrincipal
@@ -206,16 +202,16 @@ $ConfigObj.ServicePrincipalId = $servicePrincipal.objectId
 $uri = [string]::Format($graphAPIFormat, "applications")
 $nativeAppResourceAccess = $requiredResourceAccess +=
 @{
-    resourceAppId = $webApp.appId
+    resourceAppId  = $webApp.appId
     resourceAccess = @(@{
-        id = $webApp.oauth2Permissions[0].id
-        type= "Scope"
-    })
+            id   = $webApp.oauth2Permissions[0].id
+            type = "Scope"
+        })
 }
 $nativeApp = @{
-    publicClient = "true"
-    displayName = $NativeClientApplicationName
-    replyUrls = @("urn:ietf:wg:oauth:2.0:oob")
+    publicClient           = "true"
+    displayName            = $NativeClientApplicationName
+    replyUrls              = @("urn:ietf:wg:oauth:2.0:oob")
     requiredResourceAccess = $nativeAppResourceAccess
 }
 $nativeApp = CallGraphAPI $uri $headers $nativeApp
@@ -227,8 +223,8 @@ $ConfigObj.NativeClientAppId = $nativeApp.appId
 $uri = [string]::Format($graphAPIFormat, "servicePrincipals")
 $servicePrincipal = @{
     accountEnabled = "true"
-    appId = $nativeApp.appId
-    displayName = $nativeApp.displayName
+    appId          = $nativeApp.appId
+    displayName    = $nativeApp.displayName
 }
 $servicePrincipal = CallGraphAPI $uri $headers $servicePrincipal
 
@@ -240,21 +236,21 @@ $AADServicePrincipalId = (Invoke-RestMethod $uri -Headers $headers).value.object
 
 $uri = [string]::Format($graphAPIFormat, "oauth2PermissionGrants")
 $oauth2PermissionGrants = @{
-    clientId = $servicePrincipal.objectId
+    clientId    = $servicePrincipal.objectId
     consentType = "AllPrincipals"
-    resourceId = $AADServicePrincipalId
-    scope = "User.Read"
-    startTime = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffff")
-    expiryTime = (Get-Date).AddYears(1800).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffff")
+    resourceId  = $AADServicePrincipalId
+    scope       = "User.Read"
+    startTime   = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffff")
+    expiryTime  = (Get-Date).AddYears(1800).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffff")
 }
 CallGraphAPI $uri $headers $oauth2PermissionGrants | Out-Null
 $oauth2PermissionGrants = @{
-    clientId = $servicePrincipal.objectId
+    clientId    = $servicePrincipal.objectId
     consentType = "AllPrincipals"
-    resourceId = $ConfigObj.ServicePrincipalId
-    scope = "user_impersonation"
-    startTime = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffff")
-    expiryTime = (Get-Date).AddYears(1800).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffff")
+    resourceId  = $ConfigObj.ServicePrincipalId
+    scope       = "user_impersonation"
+    startTime   = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffff")
+    expiryTime  = (Get-Date).AddYears(1800).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffff")
 }
 CallGraphAPI $uri $headers $oauth2PermissionGrants | Out-Null
 
