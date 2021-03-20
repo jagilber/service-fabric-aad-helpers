@@ -1,3 +1,6 @@
+<#
+https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent#accessing-v10-resources
+#>
 [cmdletbinding()]
 param(
     [string]$identityPackageLocation,
@@ -246,7 +249,7 @@ class MsalLogon {
     }
 
     [void] MsalLoggingCallback([Microsoft.Identity.Client.LogLevel] $level, [string]$message, [bool]$containsPII) {
-        write-verbose "MSAL: $level $containsPII $message"
+        write-verbose "MSAL: $level $containsPII $($message.split('['))"
     }    
 }
 
@@ -254,7 +257,9 @@ class MsalLogon {
 #'@ 
 
 $error.Clear()
-$global:msal = [MsalLogon]::new()
+if(!$global:msal -or $force){
+    $global:msal = [MsalLogon]::new()
+}
 
 if ($error) {
     write-verbose ($error | out-string)
