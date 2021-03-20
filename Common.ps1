@@ -8,7 +8,7 @@ Common script, do not call it directly.
 
 function logon-msal() {
     write-host "msal importing msal-logon script"
-    . "$PSScriptRoot\msal-logon.ps1"
+    . "$PSScriptRoot\azure-msal-logon.ps1"
     if (!$global:msal) {
         Write-error "error getting token."
     }
