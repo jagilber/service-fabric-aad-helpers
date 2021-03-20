@@ -17,8 +17,9 @@ function logon-msal() {
     #$global:msal.Logon($resourceUrl, @("https://graph.microsoft.com//user_impersonation","https://graph.microsoft.com//Directory.Read","https://graph.microsoft.com//Directory.Write"))
     $global:msal.Logon($resourceUrl, @("https://graph.microsoft.com/user_impersonation",
         "https://graph.microsoft.com/application.read+write+all",
-        "https://graph.microsoft.com/directory.read+write+all",
-        "https://graph.microsoft.com/accessasuser+all"))
+        "https://graph.microsoft.com/directory.read+write+all"))
+        
+        #"https://graph.microsoft.com/accessasuser+all"))
     $msalResults = $global:msal.authenticationResult
     write-host "msal results $($msalResults | convertto-json)"
     return $msalResults
