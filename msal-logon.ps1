@@ -93,7 +93,7 @@ else {
 }
 
 # comment next line after microsoft.identity.client type has been imported into powershell session to troubleshoot 1 of 2
-#invoke-expression @'
+invoke-expression @'
 
 class MsalLogon {
     [string]$identityPackageLocation = $identityPackageLocation
@@ -249,12 +249,13 @@ class MsalLogon {
     }
 
     [void] MsalLoggingCallback([Microsoft.Identity.Client.LogLevel] $level, [string]$message, [bool]$containsPII) {
-        write-verbose "MSAL: $level $containsPII $($message.split('['))"
+        $message = $message.Replace(" [", "`r`n [")
+        write-verbose "MSAL: $level $containsPII $message"
     }    
 }
 
 # comment next line after microsoft.identity.client type has been imported into powershell session to troubleshoot 2 of 2
-#'@ 
+'@ 
 
 $error.Clear()
 if(!$global:msal -or $force){
