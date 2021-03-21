@@ -104,16 +104,25 @@ function AddIdentityPackageType([string]$packageName, [string] $edition) {
 }
 
 # Install latest AD client library
-if ($global:PSVersionTable.PSEdition -eq "Core") {
-    if (!(AddIdentityPackageType -packageName "Microsoft.Identity.Client" -edition "netcoreapp2.1")) {
-        write-error "unable to add package"
-        return $false
+try {
+    if (([Microsoft.Identity.Client.ConfidentialClientApplication]) -and !$force) {
+        write-host "[Microsoft.Identity.Client.AzureCloudInstance] already loaded. skipping" -ForegroundColor Cyan
     }
 }
-else {
-    if (!(AddIdentityPackageType -packageName "Microsoft.Identity.Client" -edition "net461")) {
-        write-error "unable to add package"
-        return $false
+catch {
+    if ($global:PSVersionTable.PSEdition -eq "Core") {
+        write-host "setting up microsoft.identity.client for .net core"
+        if (!(AddIdentityPackageType -packageName "Microsoft.Identity.Client" -edition "netcoreapp2.1")) {
+            write-error "unable to add package"
+            return $false
+        }
+    }
+    else {
+        write-host "setting up microsoft.identity.client for .net framework"
+        if (!(AddIdentityPackageType -packageName "Microsoft.Identity.Client" -edition "net461")) {
+            write-error "unable to add package"
+            return $false
+        }
     }
 }
 
@@ -272,7 +281,7 @@ class MsalLogon {
 '@ 
 
 $error.Clear()
-if(!$global:msal -or $force){
+if (!$global:msal -or $force) {
     $global:msal = [MsalLogon]::new()
 }
 
