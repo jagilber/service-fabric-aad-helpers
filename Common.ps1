@@ -17,9 +17,8 @@ function logon-msal() {
     #$global:msal.Logon($resourceUrl, @("https://graph.microsoft.com//user_impersonation","https://graph.microsoft.com//Directory.Read","https://graph.microsoft.com//Directory.Write"))
     $global:msal.Logon($resourceUrl, @("https://graph.microsoft.com/user_impersonation",
         "https://graph.microsoft.com/application.read+write+all",
-        "https://graph.microsoft.com/directory.read+write+all"))
-        
-        #"https://graph.microsoft.com/accessasuser+all"))
+        "https://graph.microsoft.com/directory.read+write+all",        
+        "https://graph.microsoft.com/accessasuser+all"))
     $msalResults = $global:msal.authenticationResult
     write-host "msal results $($msalResults | convertto-json)"
     return $msalResults
@@ -32,9 +31,11 @@ function GetRESTHeaders($msalResults) {
 }
 
 function CallGraphAPI($uri, $headers, $body, $method = "Post") {
-    write-host "CallGraphAPI($uri, $($headers|convertto-json), $($body|convertto-json), $method = 'Post'"
+    write-host "CallGraphAPI($uri, $($headers|convertto-json), $($body|convertto-json), $method = 'Post'"  -ForegroundColor Cyan
     $json = $body | ConvertTo-Json -Depth 4 -Compress
-    return (Invoke-RestMethod $uri -Method $method -Headers $headers -Body $json -ContentType "application/json")
+    $result = Invoke-RestMethod $uri -Method $method -Headers $headers -Body $json -ContentType "application/json"
+    write-host ($result | convertto-json -depth 5) -ForegroundColor Magenta
+    return $result
 }
 
 function AssertNotNull($obj, $msg) {
