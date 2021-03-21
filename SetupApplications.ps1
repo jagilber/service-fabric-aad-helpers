@@ -1,6 +1,6 @@
 ﻿<#
 .VERSION
-1.0.4
+1.0.5
 
 .SYNOPSIS
 Setup applications in a Service Fabric cluster Azure Active Directory tenant.
@@ -96,24 +96,25 @@ Write-Host 'TenantId = ' $TenantId
 $graphAPIFormat = $resourceUrl + "/v1.0/" + $TenantId + "/{0}" #api-version=1.5"
 $ConfigObj = @{}
 $ConfigObj.TenantId = $TenantId
+$userAppRoleId = [guid]::NewGuid()
+$adminAppRoleId = [guid]::NewGuid()
 
-$appRole = 
-@{
-    allowedMemberTypes = @("User")
-    description        = "ReadOnly roles have limited query access"
-    displayName        = "ReadOnly"
-    id                 = [guid]::NewGuid()
-    isEnabled          = "true"
-    value              = "User"
-},
-@{
-    allowedMemberTypes = @("User")
-    description        = "Admins can manage roles and perform all task actions"
-    displayName        = "Admin"
-    id                 = [guid]::NewGuid()
-    isEnabled          = "true"
-    value              = "Admin"
-}
+$appRoles = @(@{
+        allowedMemberTypes = @("User")
+        description        = "ReadOnly roles have limited query access"
+        displayName        = "ReadOnly"
+        id                 = $userAppRoleId
+        isEnabled          = "true"
+        value              = "User"
+    },
+    @{
+        allowedMemberTypes = @("User")
+        description        = "Admins can manage roles and perform all task actions"
+        displayName        = "Admin"
+        id                 = $adminAppRoleId
+        isEnabled          = "true"
+        value              = "Admin"
+    })
 
 $requiredResourceAccess =
 @(@{
@@ -138,105 +139,104 @@ if (!$NativeClientApplicationName) {
 
 #Create Web Application
 $uri = [string]::Format($graphAPIFormat, "applications")
-
-$webApp = @{}
-If ($AddResourceAccess) {
-    $webApp = @{
-        displayName            = $WebApplicationName
-        identifierUris         = @($WebApplicationUri)
-        #signInUrl = $WebApplicationReplyUrl #Not functionally needed. Set by default to avoid AAD portal UI displaying error
-        #replyUrls              = @($WebApplicationReplyUrl)
-        appRoles               = $appRole
-        requiredResourceAccess = $requiredResourceAccess
+$webApp = @{
+    displayName    = $WebApplicationName
+    identifierUris = @($WebApplicationUri)
+    appRoles       = $appRoles
+    web            = @{
+        homePageUrl  = $WebApplicationReplyUrl #Not functionally needed. Set by default to avoid AAD portal UI displaying error
+        redirectUris = @($WebApplicationReplyUrl)
     }
+    publicClient   = @{redirectUris = @('http://localhost') }
 }
-Else {
-    $webApp = @{
-        displayName    = $WebApplicationName
-        identifierUris = @($WebApplicationUri)
-        #signInUrl = $WebApplicationReplyUrl #Not functionally needed. Set by default to avoid AAD portal UI displaying error
-        #replyUrls      = @($WebApplicationReplyUrl)
-        #replyUrlsWithType      = @(@{url=$WebApplicationReplyUrl;type="InstalledClient"})
-        appRoles       = $appRole
-    }
+
+if ($AddResourceAccess) {
+    $webApp += @{requiredResourceAccess = $requiredResourceAccess }
 }
 
 $webApp = CallGraphAPI $uri $headers $webApp
-AssertNotNull $webApp 'Web Application Creation Failed'
+AssertNotNull $webApp'Web Application Creation Failed'
 $ConfigObj.WebAppId = $webApp.appId
-Write-Host 'Web Application Created:' $webApp.appId
+Write-Host "Web Application Created:`r`n$($webApp| convertto-json -depth 99)" -ForegroundColor Green
 
-# Check for an existing delegated permission with value "user_impersonation". Normally this is created by default,
-# but if it isn't, we need to update the Application object with a new one.
-$user_impersonation_scope = $webApp.oauth2Permissions | Where-Object { $_.value -eq "user_impersonation" }
+# Check for an existing delegated permission with value "user_impersonation". Normally this is not created by default,
+# but if it is, we need to update the Application object with a new one.
+$user_impersonation_scope = $webApp.api.oauth2PermissionScopes | Where-Object { $_.value -eq "user_impersonation" }
 if (-not $user_impersonation_scope) {
-    $patchApplicationUri = $graphAPIFormat -f ("applications/{0}" -f $webApp.objectId)
-    $webApp.oauth2Permissions = @($webApp.oauth2Permissions)
-    $webApp.oauth2Permissions += @{
-        "id"                      = [guid]::NewGuid()
-        "isEnabled"               = $true
-        "type"                    = "User"
-        "adminConsentDescription" = ("Allow the application to access {0} on behalf of the signed-in user." -f $WebApplicationName)
-        "adminConsentDisplayName" = ("Access {0}" -f $WebApplicationName)
-        "userConsentDescription"  = ("Allow the application to access {0} on your behalf." -f $WebApplicationName)
-        "userConsentDisplayName"  = ("Access {0}" -f $WebApplicationName)
-        "value"                   = "user_impersonation"
-    }
+    Write-Host 'adding user_impersonation_scope'
+    $patchApplicationUri = $graphAPIFormat -f ("applications/{0}" -f $webApp.Id)
+    #$webApp.oauth2Permissions = @($webAppoauth2Permissions)
+    $webApp.api.oauth2PermissionScopes = @(@{
+            "id"                      = [guid]::NewGuid()
+            "isEnabled"               = $true
+            "type"                    = "User"
+            "adminConsentDescription" = ("Allow the application to access {0} on behalf of the signed-in user." -f $WebApplicationName)
+            "adminConsentDisplayName" = ("Access {0}" -f $WebApplicationName)
+            "userConsentDescription"  = ("Allow the application to access {0} on your behalf." -f $WebApplicationName)
+            "userConsentDisplayName"  = ("Access {0}" -f $WebApplicationName)
+            "value"                   = "user_impersonation"
+        })
+
     CallGraphAPI -uri $patchApplicationUri -method "Patch" -headers $headers -body @{ 
-        "oauth2Permissions" = $webApp.oauth2Permissions
+        "api" = $webApp.api
     }
 }
 
 #Service Principal
+Write-Host 'adding servicePrincipal 1'
 $uri = [string]::Format($graphAPIFormat, "servicePrincipals")
-$servicePrincipal = @{
+$servicePrincipalWebApp = @{
     accountEnabled            = "true"
     appId                     = $webApp.appId
     displayName               = $webApp.displayName
     appRoleAssignmentRequired = "true"
 }
-$servicePrincipal = CallGraphAPI $uri $headers $servicePrincipal
-$ConfigObj.ServicePrincipalId = $servicePrincipal.objectId
+$servicePrincipalWebApp = CallGraphAPI $uri $headers $servicePrincipalWebApp
+$ConfigObj.ServicePrincipalWebApp = $servicePrincipalWebApp.Id
 
-#Create Native Client Application
-$uri = [string]::Format($graphAPIFormat, "applications")
-$nativeAppResourceAccess = $requiredResourceAccess +=
-@{
-    resourceAppId  = $webApp.appId
-    resourceAccess = @(@{
-            id   = $webApp.oauth2Permissions[0].id
-            type = "Scope"
-        })
-}
-$nativeApp = @{
-    publicClient           = "true"
-    displayName            = $NativeClientApplicationName
-    replyUrls              = @("urn:ietf:wg:oauth:2.0:oob")
-    requiredResourceAccess = $nativeAppResourceAccess
-}
-$nativeApp = CallGraphAPI $uri $headers $nativeApp
-AssertNotNull $nativeApp 'Native Client Application Creation Failed'
-Write-Host 'Native Client Application Created:' $nativeApp.appId
-$ConfigObj.NativeClientAppId = $nativeApp.appId
+# #Create Native Client Application
+# Write-Host 'creating native client application'
+# $uri = [string]::Format($graphAPIFormat, "applications")
+# $nativeAppResourceAccess = $requiredResourceAccess +=
+# @{
+#     resourceAppId  = $webApp.appId
+#     resourceAccess = @(@{
+#             id   = $webApp.api.oauth2PermissionScopes[0].id
+#             type = "Scope"
+#         })
+# }
+# $nativeApp = @{
+#     publicClient           = "true"
+#     displayName            = $NativeClientApplicationName
+#     replyUrls              = @("http://localhost") #@("urn:ietf:wg:oauth:2.0:oob")
+#     requiredResourceAccess = $nativeAppResourceAccess
+# }
+# $nativeApp = CallGraphAPI $uri $headers $nativeApp
+# AssertNotNull $nativeApp 'Native Client Application Creation Failed'
+# Write-Host 'Native Client Application Created:' $nativeApp.appId
+# $ConfigObj.NativeClientAppId = $nativeApp.appId
 
 #Service Principal
-$uri = [string]::Format($graphAPIFormat, "servicePrincipals")
-$servicePrincipal = @{
-    accountEnabled = "true"
-    appId          = $nativeApp.appId
-    displayName    = $nativeApp.displayName
-}
-$servicePrincipal = CallGraphAPI $uri $headers $servicePrincipal
+# Write-Host 'adding servicePrincipal 2'
+# $uri = [string]::Format($graphAPIFormat, "servicePrincipals")
+# $servicePrincipalNativeApp = @{
+#     accountEnabled = "true"
+#     appId          = $nativeApp.appId
+#     displayName    = $nativeApp.displayName
+# }
+# $servicePrincipalNativeApp = CallGraphAPI $uri $headers $servicePrincipalNativeApp
+# $ConfigObj.ServicePrincipalNativeApp = $servicePrincipalNativeApp.Id
 
 #OAuth2PermissionGrant
 
 #AAD service principal
+Write-Host 'adding aad servicePrincipal'
 $uri = [string]::Format($graphAPIFormat, "servicePrincipals") + '&$filter=appId eq ''00000002-0000-0000-c000-000000000000'''
 $AADServicePrincipalId = (Invoke-RestMethod $uri -Headers $headers).value.objectId
 
 $uri = [string]::Format($graphAPIFormat, "oauth2PermissionGrants")
 $oauth2PermissionGrants = @{
-    clientId    = $servicePrincipal.objectId
+    clientId    = $servicePrincipalNativeApp.Id
     consentType = "AllPrincipals"
     resourceId  = $AADServicePrincipalId
     scope       = "User.Read"
@@ -244,10 +244,11 @@ $oauth2PermissionGrants = @{
     expiryTime  = (Get-Date).AddYears(1800).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffff")
 }
 CallGraphAPI $uri $headers $oauth2PermissionGrants | Out-Null
+
 $oauth2PermissionGrants = @{
-    clientId    = $servicePrincipal.objectId
+    clientId    = $servicePrincipalNativeApp.Id
     consentType = "AllPrincipals"
-    resourceId  = $ConfigObj.ServicePrincipalId
+    resourceId  = $servicePrincipalWebApp.Id
     scope       = "user_impersonation"
     startTime   = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffff")
     expiryTime  = (Get-Date).AddYears(1800).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffff")
@@ -256,6 +257,7 @@ CallGraphAPI $uri $headers $oauth2PermissionGrants | Out-Null
 
 $ConfigObj
 
+Write-Host 'creating arm template'
 #ARM template
 Write-Host
 Write-Host '-----ARM template-----'
