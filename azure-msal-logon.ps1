@@ -34,6 +34,7 @@ param(
     [string]$clientId = "1950a258-227b-4e31-a9cf-717495945fc2",
     [string]$tenantId = "common",
     [string]$redirectUri = "http://localhost", # "urn:ietf:wg:oauth:2.0:oob", #$null
+    [string]$packageVersion = "4.28.0",
     [bool]$force
 )
 
@@ -52,11 +53,10 @@ function AddIdentityPackageType([string]$packageName, [string] $edition) {
     [io.directory]::createDirectory($nugetPackageDirectory)
     [string]$packageDirectory = "$nugetPackageDirectory/$packageName"
     
-    $global:identityPackageLocation = @(get-childitem -Path $packageDirectory -Recurse | where-object FullName -imatch "lib.$edition.$packageName\.dll" | select-object FullName)[-1].FullName
+    $global:identityPackageLocation = get-identityPackageLocation $packageDirectory
 
     if (!$global:identityPackageLocation) {
         if ($psedition -ieq 'core') {
-            $packageVersion = "4.28.0"
             $tempProjectFile = './temp.csproj'
     
             #dotnet new console 
@@ -72,6 +72,7 @@ function AddIdentityPackageType([string]$packageName, [string] $edition) {
             "
 
             out-file -InputObject $csproj -FilePath $tempProjectFile
+            write-host "dotnet restore --packages $packageDirectory --no-cache --no-dependencies $tempProjectFile"
             dotnet restore --packages $packageDirectory --no-cache --no-dependencies $tempProjectFile
     
             remove-item "$pwd/obj" -re -fo
@@ -97,10 +98,35 @@ function AddIdentityPackageType([string]$packageName, [string] $edition) {
         }
     }
     
-    $global:identityPackageLocation = @(get-childitem -Path $packageDirectory -Recurse | where-object FullName -imatch "lib.$edition.$packageName\.dll" | select-object FullName)[-1].FullName
+    $global:identityPackageLocation = get-identityPackageLocation $packageDirectory
     write-host "identityDll: $($global:identityPackageLocation)" -ForegroundColor Green
     add-type -literalPath $global:identityPackageLocation
     return $true
+}
+
+function get-identityPackageLocation($packageDirectory) {
+    $pv = [version]::new($packageVersion)
+    $pv = [version]::new($pv.Major, $pv.Minor)
+
+    $versions = @{} 
+    $files = @(get-childitem -Path $packageDirectory -Recurse | where-object FullName -imatch "lib.$edition.$packageName\.dll" | select-object FullName).FullName
+    write-host "existing identity dlls $($files|out-string)"
+
+    foreach ($file in $files) {
+        $versionString = [regex]::match($file, "\\$packageName\\([0-9.]+?)\\lib\\$edition", [text.regularexpressions.regexoptions]::IgnoreCase).Groups[1].Value
+        if(!$versionString){ continue}
+
+        $version = [version]::new($versionString)
+        [void]$versions.add($file, [version]::new($version.Major, $version.Minor))
+    }
+
+    foreach ($version in $versions.GetEnumerator()) {
+        write-host "comparing file version:$($version.value) to configured version:$($pv)"
+        if ($version.value -ge $pv) {
+            return $version.Key
+        }
+    }
+    return $null
 }
 
 # Install latest AD client library
