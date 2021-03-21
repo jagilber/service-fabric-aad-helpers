@@ -93,17 +93,17 @@ Write-Host 'TenantId = ' $TenantId
 
 . "$PSScriptRoot\Common.ps1"
 
+$graphAdResource = '00000002-0000-0000-c000-000000000000'
+$graphResource = '00000003-0000-0000-c000-000000000000'
 $graphAPIFormat = $resourceUrl + "/v1.0/" + $TenantId + "/{0}" #api-version=1.5"
 $ConfigObj = @{}
 $ConfigObj.TenantId = $TenantId
-$userAppRoleId = [guid]::NewGuid()
-$adminAppRoleId = [guid]::NewGuid()
 
 $appRoles = @(@{
         allowedMemberTypes = @("User")
         description        = "ReadOnly roles have limited query access"
         displayName        = "ReadOnly"
-        id                 = $userAppRoleId
+        id                 = [guid]::NewGuid()
         isEnabled          = "true"
         value              = "User"
     },
@@ -111,16 +111,15 @@ $appRoles = @(@{
         allowedMemberTypes = @("User")
         description        = "Admins can manage roles and perform all task actions"
         displayName        = "Admin"
-        id                 = $adminAppRoleId
+        id                 = [guid]::NewGuid()
         isEnabled          = "true"
         value              = "Admin"
     })
 
-$requiredResourceAccess =
-@(@{
-        resourceAppId  = "00000002-0000-0000-c000-000000000000"
+$requiredResourceAccess = @(@{
+        resourceAppId  = $graphResource #$graphAdResource
         resourceAccess = @(@{
-                id   = "311a71cc-e848-46a1-bdf8-97ff7156d8e6"
+                id   = "e1fe6dd8-ba31-4d61-89e7-88639da4683d" #"311a71cc-e848-46a1-bdf8-97ff7156d8e6"
                 type = "Scope"
             })
     })
@@ -139,19 +138,22 @@ if (!$NativeClientApplicationName) {
 
 #Create Web Application
 $uri = [string]::Format($graphAPIFormat, "applications")
-$webApp = @{
+$appRegistration = @{
+    appRoles = $appRoles
+}
+
+if ($AddResourceAccess) {
+    $appRegistration += @{requiredResourceAccess = $requiredResourceAccess }
+}
+
+$webApp = [hashtable]::new($appRegistration)
+$webApp += @{
     displayName    = $WebApplicationName
     identifierUris = @($WebApplicationUri)
-    appRoles       = $appRoles
     web            = @{
         homePageUrl  = $WebApplicationReplyUrl #Not functionally needed. Set by default to avoid AAD portal UI displaying error
         redirectUris = @($WebApplicationReplyUrl)
     }
-    publicClient   = @{redirectUris = @('http://localhost') }
-}
-
-if ($AddResourceAccess) {
-    $webApp += @{requiredResourceAccess = $requiredResourceAccess }
 }
 
 $webApp = CallGraphAPI $uri $headers $webApp
@@ -183,7 +185,7 @@ if (-not $user_impersonation_scope) {
 }
 
 #Service Principal
-Write-Host 'adding servicePrincipal 1'
+Write-Host 'adding servicePrincipal web app'
 $uri = [string]::Format($graphAPIFormat, "servicePrincipals")
 $servicePrincipalWebApp = @{
     accountEnabled            = "true"
@@ -194,45 +196,65 @@ $servicePrincipalWebApp = @{
 $servicePrincipalWebApp = CallGraphAPI $uri $headers $servicePrincipalWebApp
 $ConfigObj.ServicePrincipalWebApp = $servicePrincipalWebApp.Id
 
-# #Create Native Client Application
-# Write-Host 'creating native client application'
-# $uri = [string]::Format($graphAPIFormat, "applications")
-# $nativeAppResourceAccess = $requiredResourceAccess +=
-# @{
-#     resourceAppId  = $webApp.appId
-#     resourceAccess = @(@{
-#             id   = $webApp.api.oauth2PermissionScopes[0].id
-#             type = "Scope"
-#         })
-# }
-# $nativeApp = @{
-#     publicClient           = "true"
-#     displayName            = $NativeClientApplicationName
-#     replyUrls              = @("http://localhost") #@("urn:ietf:wg:oauth:2.0:oob")
-#     requiredResourceAccess = $nativeAppResourceAccess
-# }
-# $nativeApp = CallGraphAPI $uri $headers $nativeApp
-# AssertNotNull $nativeApp 'Native Client Application Creation Failed'
-# Write-Host 'Native Client Application Created:' $nativeApp.appId
-# $ConfigObj.NativeClientAppId = $nativeApp.appId
+#Create Native Client Application
+Write-Host 'creating native client application'
+$uri = [string]::Format($graphAPIFormat, "applications")
+
+$nativeApp = [hashtable]::new($appRegistration)
+$nativeApp += @{
+    displayName  = $NativeClientApplicationName
+    publicClient = @{redirectUris = @('http://localhost') }
+}
+
+$nativeApp = CallGraphAPI $uri $headers $nativeApp
+AssertNotNull $nativeApp 'Native Client Application Creation Failed'
+Write-Host 'Native Client Application Created:' $nativeApp.appId
+$ConfigObj.NativeClientAppId = $nativeApp.appId
+
+# Check for an existing delegated permission with value "user_impersonation". Normally this is not created by default,
+# but if it is, we need to update the Application object with a new one.
+$user_impersonation_scope = $nativeApp.api.oauth2PermissionScopes | Where-Object { $_.value -eq "user_impersonation" }
+if (-not $user_impersonation_scope) {
+    Write-Host 'adding user_impersonation_scope'
+    $patchApplicationUri = $graphAPIFormat -f ("applications/{0}" -f $nativeApp.Id)
+    #$webApp.oauth2Permissions = @($webAppoauth2Permissions)
+    $nativeApp.api.oauth2PermissionScopes = @(@{
+            "id"                      = [guid]::NewGuid()
+            "isEnabled"               = $true
+            "type"                    = "User"
+            "adminConsentDescription" = ("Allow the application to access {0} on behalf of the signed-in user." -f $NativeApplicationName)
+            "adminConsentDisplayName" = ("Access {0}" -f $NativeApplicationName)
+            "userConsentDescription"  = ("Allow the application to access {0} on your behalf." -f $NativeApplicationName)
+            "userConsentDisplayName"  = ("Access {0}" -f $NativeApplicationName)
+            "value"                   = "user_impersonation"
+        })
+
+    CallGraphAPI -uri $patchApplicationUri -method "Patch" -headers $headers -body @{ 
+        "api" = $nativeApp.api
+    }
+}
+
 
 #Service Principal
-# Write-Host 'adding servicePrincipal 2'
-# $uri = [string]::Format($graphAPIFormat, "servicePrincipals")
-# $servicePrincipalNativeApp = @{
-#     accountEnabled = "true"
-#     appId          = $nativeApp.appId
-#     displayName    = $nativeApp.displayName
-# }
-# $servicePrincipalNativeApp = CallGraphAPI $uri $headers $servicePrincipalNativeApp
-# $ConfigObj.ServicePrincipalNativeApp = $servicePrincipalNativeApp.Id
+Write-Host 'adding servicePrincipal 2'
+$uri = [string]::Format($graphAPIFormat, "servicePrincipals")
+$servicePrincipalNativeApp = @{
+    accountEnabled = "true"
+    appId          = $nativeApp.appId
+    displayName    = $nativeApp.displayName
+}
+$servicePrincipalNativeApp = CallGraphAPI $uri $headers $servicePrincipalNativeApp
+$ConfigObj.ServicePrincipalNativeApp = $servicePrincipalNativeApp.Id
 
 #OAuth2PermissionGrant
 
 #AAD service principal
 Write-Host 'adding aad servicePrincipal'
-$uri = [string]::Format($graphAPIFormat, "servicePrincipals") + '&$filter=appId eq ''00000002-0000-0000-c000-000000000000'''
-$AADServicePrincipalId = (Invoke-RestMethod $uri -Headers $headers).value.objectId
+$uri = [string]::Format($graphAPIFormat, "servicePrincipals") + "?`$filter=appId eq '$graphResource'"
+write-host "$uri" -ForegroundColor Cyan
+$AADServicePrincipalId = (Invoke-RestMethod $uri -Headers $headers).value.appId
+
+write-host "aadServicePrincipalId $($AADServicePrincipalId|out-string)"
 
 $uri = [string]::Format($graphAPIFormat, "oauth2PermissionGrants")
 $oauth2PermissionGrants = @{
@@ -258,11 +280,12 @@ CallGraphAPI $uri $headers $oauth2PermissionGrants | Out-Null
 $ConfigObj
 
 Write-Host 'creating arm template'
-#ARM template
-Write-Host
-Write-Host '-----ARM template-----'
-Write-Host '"azureActiveDirectory": {'
-Write-Host ("  `"tenantId`":`"{0}`"," -f $ConfigObj.TenantId)
-Write-Host ("  `"clusterApplication`":`"{0}`"," -f $ConfigObj.WebAppId)
-Write-Host ("  `"clientApplication`":`"{0}`"" -f $ConfigObj.NativeClientAppId)
-Write-Host "},"
+Write-Host '-----ARM template-----' -ForegroundColor Yellow
+$armTemplate = @{
+    azureActiveDirectory = @{
+        tenantId           = $configobj.TenantId
+        clusterApplication = $configobj.WebAppId
+        clientApplication  = $configobj.NativeClientAppId
+    }
+}
+Write-Host ($armTemplate | convertto-json -depth 5) -ForegroundColor White
