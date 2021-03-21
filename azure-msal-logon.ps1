@@ -28,19 +28,19 @@
 
 [cmdletbinding()]
 param(
-    [string]$identityPackageLocation,
-    [string]$token,
-    [string]$clientSecret,
-    [string]$clientId = "1950a258-227b-4e31-a9cf-717495945fc2",
     [string]$tenantId = "common",
-    [string]$redirectUri = "http://localhost", # "urn:ietf:wg:oauth:2.0:oob", #$null
+    [string]$redirectUri = "http://localhost", # "urn:ietf:wg:oauth:2.0:oob"
+    [string]$clientId = "1950a258-227b-4e31-a9cf-717495945fc2",
+    [string]$clientSecret,
+    [string]$token,
+    [string]$identityPackageLocation,
     [string]$packageVersion = "4.28.0",
     [bool]$force
 )
 
 $PSModuleAutoLoadingPreference = 2
 $ErrorActionPreference = "continue"
-$global:identityPackageLocation  
+$global:identityPackageLocation = $null
 
 function AddIdentityPackageType([string]$packageName, [string] $edition) {
     # support ps core on linux
@@ -114,7 +114,7 @@ function get-identityPackageLocation($packageDirectory) {
 
     foreach ($file in $files) {
         $versionString = [regex]::match($file, "\\$packageName\\([0-9.]+?)\\lib\\$edition", [text.regularexpressions.regexoptions]::IgnoreCase).Groups[1].Value
-        if(!$versionString){ continue}
+        if (!$versionString) { continue }
 
         $version = [version]::new($versionString)
         [void]$versions.add($file, [version]::new($version.Major, $version.Minor))
@@ -129,13 +129,19 @@ function get-identityPackageLocation($packageDirectory) {
     return $null
 }
 
-# Install latest AD client library
-try {
-    if (([Microsoft.Identity.Client.ConfidentialClientApplication]) -and !$force) {
-        write-host "[Microsoft.Identity.Client.AzureCloudInstance] already loaded. skipping" -ForegroundColor Cyan
+function get-msalLibrary() {
+    # Install latest AD client library
+    try {
+        if (([Microsoft.Identity.Client.ConfidentialClientApplication]) -and !$force) {
+            write-host "[Microsoft.Identity.Client.AzureCloudInstance] already loaded. skipping" -ForegroundColor Cyan
+            return
+        }
     }
-}
-catch {
+    catch {
+        write-verbose "exception checking for identity client:$($error|out-string)"
+        $error.Clear()
+    }
+
     if ($global:PSVersionTable.PSEdition -eq "Core") {
         write-host "setting up microsoft.identity.client for .net core"
         if (!(AddIdentityPackageType -packageName "Microsoft.Identity.Client" -edition "netcoreapp2.1")) {
@@ -151,6 +157,8 @@ catch {
         }
     }
 }
+
+get-msalLibrary
 
 # comment next line after microsoft.identity.client type has been imported into powershell session to troubleshoot 1 of 2
 invoke-expression @'
