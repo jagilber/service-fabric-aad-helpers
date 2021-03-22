@@ -140,6 +140,7 @@ if (!$NativeClientApplicationName) {
 $uri = [string]::Format($graphAPIFormat, "applications")
 $appRegistration = @{
     appRoles = $appRoles
+    #oauth2AllowIdTokenImplicitFlow = $true
 }
 
 if ($AddResourceAccess) {
@@ -153,6 +154,10 @@ $webApp += @{
     web            = @{
         homePageUrl  = $WebApplicationReplyUrl #Not functionally needed. Set by default to avoid AAD portal UI displaying error
         redirectUris = @($WebApplicationReplyUrl)
+        implicitGrantSettings = @{
+            enableAccessTokenIssuance = $false
+            enableIdTokenIssuance = $true
+          }
     }
 }
 
@@ -163,26 +168,28 @@ Write-Host "Web Application Created:`r`n$($webApp| convertto-json -depth 99)" -F
 
 # Check for an existing delegated permission with value "user_impersonation". Normally this is not created by default,
 # but if it is, we need to update the Application object with a new one.
-$user_impersonation_scope = $webApp.api.oauth2PermissionScopes | Where-Object { $_.value -eq "user_impersonation" }
-if (-not $user_impersonation_scope) {
-    Write-Host 'adding user_impersonation_scope'
-    $patchApplicationUri = $graphAPIFormat -f ("applications/{0}" -f $webApp.Id)
-    #$webApp.oauth2Permissions = @($webAppoauth2Permissions)
-    $webApp.api.oauth2PermissionScopes = @(@{
-            "id"                      = [guid]::NewGuid()
-            "isEnabled"               = $true
-            "type"                    = "User"
-            "adminConsentDescription" = ("Allow the application to access {0} on behalf of the signed-in user." -f $WebApplicationName)
-            "adminConsentDisplayName" = ("Access {0}" -f $WebApplicationName)
-            "userConsentDescription"  = ("Allow the application to access {0} on your behalf." -f $WebApplicationName)
-            "userConsentDisplayName"  = ("Access {0}" -f $WebApplicationName)
-            "value"                   = "user_impersonation"
-        })
+Write-Host 'adding user_impersonation_scope'
+$patchApplicationUri = $graphAPIFormat -f ("applications/{0}" -f $webApp.Id)
+#$webApp.oauth2Permissions = @($webAppoauth2Permissions)
+$webApp.api.oauth2PermissionScopes = @(@{
+        "id"                      = [guid]::NewGuid()
+        "isEnabled"               = $true
+        "type"                    = "User"
+        "adminConsentDescription" = ("Allow the application to access {0} on behalf of the signed-in user." -f $WebApplicationName)
+        "adminConsentDisplayName" = ("Access {0}" -f $WebApplicationName)
+        "userConsentDescription"  = ("Allow the application to access {0} on your behalf." -f $WebApplicationName)
+        "userConsentDisplayName"  = ("Access {0}" -f $WebApplicationName)
+        "value"                   = "user_impersonation"
+    })
 
-    CallGraphAPI -uri $patchApplicationUri -method "Patch" -headers $headers -body @{ 
-        "api" = $webApp.api
-    }
+CallGraphAPI -uri $patchApplicationUri -method "Patch" -headers $headers -body @{ 
+    "api" = $webApp.api
 }
+
+# CallGraphAPI -uri $patchApplicationUri -method "Patch" -headers $headers -body @{ 
+#     "oauth2AllowIdTokenImplicitFlow" = $true
+# }
+
 
 #Service Principal
 Write-Host 'adding servicePrincipal web app'
@@ -213,27 +220,23 @@ $ConfigObj.NativeClientAppId = $nativeApp.appId
 
 # Check for an existing delegated permission with value "user_impersonation". Normally this is not created by default,
 # but if it is, we need to update the Application object with a new one.
-$user_impersonation_scope = $nativeApp.api.oauth2PermissionScopes | Where-Object { $_.value -eq "user_impersonation" }
-if (-not $user_impersonation_scope) {
-    Write-Host 'adding user_impersonation_scope'
-    $patchApplicationUri = $graphAPIFormat -f ("applications/{0}" -f $nativeApp.Id)
-    #$webApp.oauth2Permissions = @($webAppoauth2Permissions)
-    $nativeApp.api.oauth2PermissionScopes = @(@{
-            "id"                      = [guid]::NewGuid()
-            "isEnabled"               = $true
-            "type"                    = "User"
-            "adminConsentDescription" = ("Allow the application to access {0} on behalf of the signed-in user." -f $NativeApplicationName)
-            "adminConsentDisplayName" = ("Access {0}" -f $NativeApplicationName)
-            "userConsentDescription"  = ("Allow the application to access {0} on your behalf." -f $NativeApplicationName)
-            "userConsentDisplayName"  = ("Access {0}" -f $NativeApplicationName)
-            "value"                   = "user_impersonation"
-        })
+Write-Host 'adding user_impersonation_scope'
+$patchApplicationUri = $graphAPIFormat -f ("applications/{0}" -f $nativeApp.Id)
+#$webApp.oauth2Permissions = @($webAppoauth2Permissions)
+$nativeApp.api.oauth2PermissionScopes = @(@{
+        "id"                      = [guid]::NewGuid()
+        "isEnabled"               = $true
+        "type"                    = "User"
+        "adminConsentDescription" = ("Allow the application to access {0} on behalf of the signed-in user." -f $NativeApplicationName)
+        "adminConsentDisplayName" = ("Access {0}" -f $NativeApplicationName)
+        "userConsentDescription"  = ("Allow the application to access {0} on your behalf." -f $NativeApplicationName)
+        "userConsentDisplayName"  = ("Access {0}" -f $NativeApplicationName)
+        "value"                   = "user_impersonation"
+    })
 
-    CallGraphAPI -uri $patchApplicationUri -method "Patch" -headers $headers -body @{ 
-        "api" = $nativeApp.api
-    }
+CallGraphAPI -uri $patchApplicationUri -method "Patch" -headers $headers -body @{ 
+    "api" = $nativeApp.api
 }
-
 
 #Service Principal
 Write-Host 'adding servicePrincipal 2'
