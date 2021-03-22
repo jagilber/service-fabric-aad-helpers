@@ -99,7 +99,8 @@ $graphAPIFormat = $resourceUrl + "/v1.0/" + $TenantId + "/{0}" #api-version=1.5"
 $ConfigObj = @{}
 $ConfigObj.TenantId = $TenantId
 
-$appRoles = @(@{
+$appRoles = @(
+    @{
         allowedMemberTypes = @("User")
         description        = "ReadOnly roles have limited query access"
         displayName        = "ReadOnly"
@@ -114,15 +115,18 @@ $appRoles = @(@{
         id                 = [guid]::NewGuid()
         isEnabled          = "true"
         value              = "Admin"
-    })
+    }
+)
 
-$requiredResourceAccess = @(@{
+$requiredResourceAccess = @(
+    @{
         resourceAppId  = $graphResource #$graphAdResource
         resourceAccess = @(@{
                 id   = "e1fe6dd8-ba31-4d61-89e7-88639da4683d" #"311a71cc-e848-46a1-bdf8-97ff7156d8e6"
                 type = "Scope"
             })
-    })
+    }
+)
 
 if (!$WebApplicationName) {
     $WebApplicationName = "ServiceFabricCluster"
@@ -184,7 +188,7 @@ $patchApplicationUri = $graphAPIFormat -f ("applications/{0}" -f $webApp.Id)
 $webApp.api.oauth2PermissionScopes = $oauth2PermissionScopes
 
 CallGraphAPI -uri $patchApplicationUri -method "Patch" -headers $headers -body @{ 
-    "api" = $webApp.api
+    api = $webApp.api
 }
 
 #Service Principal
