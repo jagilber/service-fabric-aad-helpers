@@ -89,7 +89,7 @@ Write-Host 'TenantId = ' $TenantId
 
 . "$PSScriptRoot\Common.ps1"
 
-$graphAPIFormat = $resourceUrl + "/v1.0/" + $TenantId + "/{0}?api-version=1.5{1}"
+$graphAPIFormat = $resourceUrl + "/v1.0/" + $TenantId + "/{0}?{1}"
 
 $uri = [string]::Format($graphAPIFormat, "tenantDetails", "")
 $domain = (Invoke-RestMethod $uri -Headers $headers).value.verifiedDomains[0].name
@@ -98,7 +98,7 @@ $servicePrincipalId = ""
 if($ConfigObj)
 {
     $WebApplicationId = $ConfigObj.WebAppId
-    $servicePrincipalId = $ConfigObj.ServicePrincipalId
+    $servicePrincipalId = $ConfigObj.ServicePrincipalWebApp
 }
 else
 {

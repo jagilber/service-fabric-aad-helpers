@@ -79,9 +79,9 @@ function AddIdentityPackageType([string]$packageName, [string] $edition) {
             remove-item -path $tempProjectFile
         }
         else {
-            $nuget = "nuget.exe"    
+            $nuget = "nuget.exe"
             if (!(test-path $nuget)) {
-                $nuget = "$env:temp/nuget.exe"
+                $nuget = "$env:temp/$nuget"
                 if (!(test-path $nuget)) {
                     invoke-webRequest $nugetDownloadUrl -outFile  $nuget
                 }
