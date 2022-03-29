@@ -154,7 +154,7 @@ switch ($Location) {
 
 if ($ClusterName) {
     $WebApplicationName = $ClusterName + "_Cluster"
-    $WebApplicationUri = "https://$ClusterName"
+    #$WebApplicationUri = "https://$ClusterName"
     $NativeClientApplicationName = $ClusterName + "_Client"
 }
 

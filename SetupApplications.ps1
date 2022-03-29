@@ -160,7 +160,7 @@ $oauth2PermissionScopes = @(
     }
 )
 
-#Create Web Application
+Write-Host 'creating web application' -ForegroundColor Magenta
 $uri = [string]::Format($graphAPIFormat, "applications")
 $appRegistration = @{
     appRoles       = $appRoles
@@ -190,7 +190,7 @@ AssertNotNull $webApp'Web Application Creation Failed'
 $ConfigObj.WebAppId = $webApp.appId
 Write-Host "Web Application Created:`r`n$($webApp| convertto-json -depth 99)" -ForegroundColor Green
 
-Write-Host 'adding user_impersonation_scope'
+Write-Host 'adding user_impersonation_scope' -ForegroundColor Magenta
 $patchApplicationUri = $graphAPIFormat -f ("applications/{0}" -f $webApp.Id)
 $webApp.api.oauth2PermissionScopes = $oauth2PermissionScopes
 
@@ -199,7 +199,7 @@ CallGraphAPI -uri $patchApplicationUri -method "Patch" -headers $headers -body @
 }
 
 #Service Principal
-Write-Host 'adding servicePrincipal web app'
+Write-Host 'adding servicePrincipal web app' -ForegroundColor Magenta
 $uri = [string]::Format($graphAPIFormat, "servicePrincipals")
 $servicePrincipalWebApp = @{
     accountEnabled            = "true"
@@ -211,7 +211,7 @@ $servicePrincipalWebApp = CallGraphAPI $uri $headers $servicePrincipalWebApp
 $ConfigObj.ServicePrincipalWebApp = $servicePrincipalWebApp.Id
 
 #Create Native Client Application
-Write-Host 'creating native client application'
+Write-Host 'creating native client application' -ForegroundColor Magenta
 $uri = [string]::Format($graphAPIFormat, "applications")
 
 $nativeApp = [hashtable]::new($appRegistration)
@@ -225,7 +225,7 @@ AssertNotNull $nativeApp 'Native Client Application Creation Failed'
 Write-Host 'Native Client Application Created:' $nativeApp.appId
 $ConfigObj.NativeClientAppId = $nativeApp.appId
 
-Write-Host 'adding user_impersonation_scope'
+Write-Host 'adding user_impersonation_scope' -ForegroundColor Magenta
 $patchApplicationUri = $graphAPIFormat -f ("applications/{0}" -f $nativeApp.Id)
 $nativeApp.api.oauth2PermissionScopes = $oauth2PermissionScopes
 CallGraphAPI -uri $patchApplicationUri -method "Patch" -headers $headers -body @{ 
@@ -233,7 +233,7 @@ CallGraphAPI -uri $patchApplicationUri -method "Patch" -headers $headers -body @
 }
 
 #Service Principal
-Write-Host 'adding servicePrincipal native app'
+Write-Host 'adding servicePrincipal native app' -ForegroundColor Magenta
 $uri = [string]::Format($graphAPIFormat, "servicePrincipals")
 $servicePrincipalNativeApp = @{
     accountEnabled = $true
@@ -246,7 +246,7 @@ $ConfigObj.ServicePrincipalNativeApp = $servicePrincipalNativeApp.Id
 #OAuth2PermissionGrant
 
 #AAD service principal
-Write-Host 'adding aad servicePrincipal'
+Write-Host 'adding aad servicePrincipal' -ForegroundColor Magenta
 $uri = [string]::Format($graphAPIFormat, "servicePrincipals") + "?`$filter=appId eq '$graphResource'"
 write-host "$uri" -ForegroundColor Cyan
 $AADServicePrincipalId = (Invoke-RestMethod $uri -Headers $headers).value.appId
@@ -275,7 +275,7 @@ CallGraphAPI $uri $headers $oauth2PermissionGrants | Out-Null
 
 $ConfigObj
 
-Write-Host 'creating arm template'
+Write-Host 'creating arm template' -ForegroundColor Magenta
 Write-Host '-----ARM template-----' -ForegroundColor Yellow
 $armTemplate = @{
     azureActiveDirectory = @{
