@@ -31,7 +31,7 @@ function main () {
         Write-Warning $_.Exception.Message
     }
 
-    return GetRESTHeaders
+    return get-RESTHeaders
 }
 
 function get-cloudInstance() {
@@ -111,12 +111,6 @@ function get-RESTHeadersMSAL() {
     $msalResults = $global:msal.authenticationResult
     write-host "msal results $($msalResults | convertto-json)"
     return $msalResults
-}
-
-function GetRESTHeaders($msalResults) {
-    $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-    $headers.Add("Authorization", "Bearer $($msalResults.accessToken)")
-    return $headers
 }
 
 function CallGraphAPI($uri, $headers, $body, $method = "Post") {
