@@ -31,7 +31,7 @@ function main () {
         Write-Warning $_.Exception.Message
     }
 
-    return GetRESTHeaders -msalResults (logon-msal)
+    return GetRESTHeaders
 }
 
 function get-cloudInstance() {
@@ -40,7 +40,52 @@ function get-cloudInstance() {
     return $isCloudInstance
 }
 
-function logon-msal() {
+function get-RESTHeaders() {
+    # Use common client 
+    $clientId = "1950a258-227b-4e31-a9cf-717495945fc2"
+    $redirectUrl = "urn:ietf:wg:oauth:2.0:oob"
+    
+    if (get-cloudInstance) {
+        $token = get-RESTHeadersCloud
+    }
+    elseif($psedition -ieq 'core') {
+        $token = get-RESTHeadersMSAL
+    }
+    else{
+        $token = get-RESTHeadersADAL
+    }
+    
+    $authHeader = @{
+        'Content-Type'  = 'application/json'
+        'Authorization' = 'Bearer ' + $token
+    }
+
+    write-host "auth header: $($authHeader | convertto-json)"
+    return $authHeader
+}
+
+function get-RESTHeadersADAL() {
+    $authenticationContext = New-Object Microsoft.IdentityModel.Clients.ActiveDirectory.AuthenticationContext -ArgumentList $authString, $FALSE
+    
+    $PromptBehavior = [Microsoft.IdentityModel.Clients.ActiveDirectory.PromptBehavior]::RefreshSession
+    $PlatformParameters = New-Object Microsoft.IdentityModel.Clients.ActiveDirectory.PlatformParameters -ArgumentList $PromptBehavior
+    $accessToken = $authenticationContext.AcquireTokenAsync($resourceUrl, $clientId, $redirectUrl, $PlatformParameters).Result.AccessToken
+    return $accessToken
+}
+
+function get-RESTHeadersCloud() { 
+    # https://docs.microsoft.com/en-us/azure/cloud-shell/msi-authorization
+    $response = invoke-webRequest -method post `
+        -uri 'http://localhost:50342/oauth2/token' `
+        -body "resource=$resourceUrl" `
+        -header @{'metadata' = 'true' }
+
+    write-host $response | convertto-json
+    $token = ($response | convertfrom-json).access_token
+    return $token
+}
+
+function get-RESTHeadersMSAL() {
     write-host "msal importing msal-logon script"
     . "$PSScriptRoot\azure-msal-logon.ps1"
     if (!$global:msal) {
@@ -96,8 +141,6 @@ switch ($Location) {
         $authString = "https://login.microsoftonline.com/" + $TenantId
     }
 }
-
-
 
 if ($ClusterName) {
     $WebApplicationName = $ClusterName + "_Cluster"

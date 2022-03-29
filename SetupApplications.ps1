@@ -61,6 +61,7 @@ Param
     $WebApplicationName,
 
     [Parameter(ParameterSetName = 'Customize')]
+    [Parameter(ParameterSetName = 'Prefix')]
     [String]
     $WebApplicationUri,
 
