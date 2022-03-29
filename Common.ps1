@@ -152,4 +152,4 @@ if ($ClusterName) {
     $NativeClientApplicationName = $ClusterName + "_Client"
 }
 
-main
+$headers = main
