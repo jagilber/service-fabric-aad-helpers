@@ -6,6 +6,40 @@
 Common script, do not call it directly.
 #>
 
+function main () {
+    try {
+        # Install latest AD client library
+        # check for cloudshell https://shell.azure.com
+
+        if (!(get-cloudInstance)) {
+            $nuget = "nuget.exe"
+            if (!(test-path $nuget)) {
+                $nugetDownloadUrl = "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
+                invoke-webRequest $nugetDownloadUrl -outFile $nuget
+            }
+
+            $env:path = $env:path.replace(";$pwd;", "") + ";$pwd;"
+            $ADPackage = "Microsoft.IdentityModel.Clients.ActiveDirectory"
+            & nuget.exe install $ADPackage > nuget.log
+
+            # Target .NET Framework version of the DLL
+            $FilePath = (Get-Item .\\Microsoft.IdentityModel.Clients.ActiveDirectory.[0-9].[0-9].[0-9]\\lib\\net[0-9][0-9]\\Microsoft.IdentityModel.Clients.ActiveDirectory.dll).FullName | Resolve-Path -Relative
+            Add-Type -Path $FilePath
+        }
+    }
+    catch {
+        Write-Warning $_.Exception.Message
+    }
+
+    return GetRESTHeaders -msalResults (logon-msal)
+}
+
+function get-cloudInstance() {
+    $isCloudInstance = $PSVersionTable.Platform -ieq 'unix' -and ($env:ACC_CLOUD)
+    write-host "cloud instance: $isCloudInstance"
+    return $isCloudInstance
+}
+
 function logon-msal() {
     write-host "msal importing msal-logon script"
     . "$PSScriptRoot\azure-msal-logon.ps1"
@@ -52,9 +86,9 @@ switch ($Location) {
         $authString = "https://login.partner.microsoftonline.cn/" + $TenantId
     }
     
-    "germany" {
+    "us" {
         $resourceUrl = "https://graph.microsoft.com"
-        $authString = "https://login.microsoftonline.de/" + $TenantId   
+        $authString = "https://login.microsoftonline.us/" + $TenantId
     }
 
     default {
@@ -63,10 +97,12 @@ switch ($Location) {
     }
 }
 
-$headers = GetRESTHeaders -msalResults (logon-msal)
+
 
 if ($ClusterName) {
     $WebApplicationName = $ClusterName + "_Cluster"
     $WebApplicationUri = "https://$ClusterName"
     $NativeClientApplicationName = $ClusterName + "_Client"
 }
+
+main

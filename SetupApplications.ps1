@@ -79,14 +79,20 @@ Param
 
     [Parameter(ParameterSetName = 'Prefix')]
     [Parameter(ParameterSetName = 'Customize')]
-    [ValidateSet('china', 'germany')]
+    [ValidateSet('us', 'china')]
     [String]
     $Location,
 
     [Parameter(ParameterSetName = 'Customize')]
     [Parameter(ParameterSetName = 'Prefix')]
     [Switch]
-    $AddResourceAccess
+    $AddResourceAccess,
+
+    [Parameter(ParameterSetName = 'Prefix')]
+    [Parameter(ParameterSetName = 'Customize')]
+    [ValidateSet('AzureADMyOrg ', 'AzureADMultipleOrgs','AzureADandPersonalMicrosoftAccount','PersonalMicrosoftAccount')]
+    [String]
+    $signInAudience = 'AzureADMyOrg '
 )
 
 Write-Host 'TenantId = ' $TenantId
@@ -176,6 +182,7 @@ $webApp += @{
             enableIdTokenIssuance     = $true
         }
     }
+    signInAudience = $signInAudience
 }
 
 $webApp = CallGraphAPI $uri $headers $webApp
