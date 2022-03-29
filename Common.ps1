@@ -65,6 +65,7 @@ function get-RESTHeaders() {
 }
 
 function get-RESTHeadersADAL() {
+    write-host "getting oauth token from ADAL"
     $authenticationContext = New-Object Microsoft.IdentityModel.Clients.ActiveDirectory.AuthenticationContext -ArgumentList $authString, $FALSE
     
     $PromptBehavior = [Microsoft.IdentityModel.Clients.ActiveDirectory.PromptBehavior]::RefreshSession
@@ -75,6 +76,14 @@ function get-RESTHeadersADAL() {
 
 function get-RESTHeadersCloud() { 
     # https://docs.microsoft.com/en-us/azure/cloud-shell/msi-authorization
+    write-host "getting oauth token from cloud shell"
+    write-host "
+    $response = invoke-webRequest -method post ``
+        -uri 'http://localhost:50342/oauth2/token' ``
+        -body `"resource=$resourceUrl`" ``
+        -header @{'metadata' = 'true' }
+    "
+
     $response = invoke-webRequest -method post `
         -uri 'http://localhost:50342/oauth2/token' `
         -body "resource=$resourceUrl" `
@@ -86,6 +95,7 @@ function get-RESTHeadersCloud() {
 }
 
 function get-RESTHeadersMSAL() {
+    write-host "getting oauth token from MSAL"
     write-host "msal importing msal-logon script"
     . "$PSScriptRoot\azure-msal-logon.ps1"
     if (!$global:msal) {
