@@ -91,9 +91,9 @@ Param
 
     [Parameter(ParameterSetName = 'Prefix')]
     [Parameter(ParameterSetName = 'Customize')]
-    [ValidateSet('AzureADMyOrg ', 'AzureADMultipleOrgs','AzureADandPersonalMicrosoftAccount','PersonalMicrosoftAccount')]
+    [ValidateSet('AzureADMyOrg', 'AzureADMultipleOrgs','AzureADandPersonalMicrosoftAccount','PersonalMicrosoftAccount')]
     [String]
-    $signInAudience = 'AzureADMyOrg '
+    $signInAudience = 'AzureADMyOrg'
 )
 
 Write-Host 'TenantId = ' $TenantId
