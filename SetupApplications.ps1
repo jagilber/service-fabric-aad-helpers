@@ -164,7 +164,7 @@ $oauth2PermissionScopes = @(
 $uri = [string]::Format($graphAPIFormat, "applications")
 $appRegistration = @{
     appRoles       = $appRoles
-    signInAudience = 'AzureADMyOrg'
+    signInAudience = $signInAudience
 }
 
 if ($AddResourceAccess) {
@@ -183,7 +183,6 @@ $webApp += @{
             enableIdTokenIssuance     = $true
         }
     }
-    signInAudience = $signInAudience
 }
 
 $webApp = CallGraphAPI $uri $headers $webApp
