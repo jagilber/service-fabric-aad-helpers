@@ -130,10 +130,10 @@ $sleepSeconds = 5
 function main () {
     try {
         if ($logFile) {
-            Start-Transcript -path $logFile -Force
+            write-host (Start-Transcript -path $logFile -Force)
         }
 
-        enable-AADUser
+        return enable-AADUser
     }
     catch [Exception] {
         $errorString = "exception: $($psitem.Exception.Response.StatusCode.value__)`r`nexception:`r`n$($psitem.Exception.Message)`r`n$($error | out-string)`r`n$($psitem.ScriptStackTrace)"
@@ -141,7 +141,7 @@ function main () {
     }
     finally {
         if ($logFile) {
-            Stop-Transcript
+            write-host (Stop-Transcript)
         }
     }
 }

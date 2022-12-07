@@ -143,10 +143,10 @@ $msGraphUserReadId = 'e1fe6dd8-ba31-4d61-89e7-88639da4683d'
 function main () {
     try {
         if ($logFile) {
-            Start-Transcript -path $logFile -Force
+            write-host (Start-Transcript -path $logFile -Force)
         }
 
-        enable-AAD
+        return enable-AAD
     }
     catch [Exception] {
         $errorString = "exception: $($psitem.Exception.Response.StatusCode.value__)`r`nexception:`r`n$($psitem.Exception.Message)`r`n$($error | out-string)`r`n$($psitem.ScriptStackTrace)"
@@ -154,7 +154,7 @@ function main () {
     }
     finally {
         if ($logFile) {
-            Stop-Transcript
+            write-host (Stop-Transcript)
         }
     }
 }
@@ -285,7 +285,7 @@ function add-oauthPermissions($webApp, $webApplicationName) {
     $null = wait-forResult -functionPointer (get-item function:\invoke-graphApi) `
         -message "waiting for patch application uri to be available" `
         -uri $patchApplicationUri `
-        -method get
+        -method 'get'
 
     # timing issue even when call above successful
     $result = invoke-graphApi -retry -uri $patchApplicationUri -method 'patch' -body @{
