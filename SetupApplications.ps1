@@ -29,7 +29,7 @@ Example: 'https://mycluster.westus.cloudapp.azure.com:19080/explorer/index.html'
 Name of native client application representing client.
 
 .PARAMETER ClusterName
-A friendly Service Fabric cluster name. Application settings generated from cluster name: WebApplicationName = ClusterName + "_Cluster", NativeClientApplicationName = ClusterName + "_Client" 
+A friendly Service Fabric cluster name. Application settings generated from cluster name: WebApplicationName = ClusterName + "_Cluster", NativeClientApplicationName = ClusterName + "_Client"
 
 .PARAMETER Location
 Used to set metadata for specific region (for example: china, germany). Ignore it in global environment.
@@ -189,7 +189,7 @@ function add-appRegistration($WebApplicationUri, $SpaApplicationReplyUrl, $requi
     }
     
     $spaAppResource = @{
-        redirectUris          = @($SpaApplicationReplyUrl)
+        redirectUris = @($SpaApplicationReplyUrl)
     }
     
     if ($AddResourceAccess) {
@@ -381,6 +381,46 @@ function add-servicePrincipalGrantScope($clientId, $resourceId, $scope) {
     return $result
 }
 
+function confirm-appRegistration($webApp) {
+    
+    # cleanup legacy configuration reply urls?
+    $spaReplyUri = [Uri]::new($SpaApplicationReplyUrl)
+    $migratingUrls = [collections.arraylist]::new()
+    $migratingUrls.Add($SpaApplicationReplyUrl)
+    $webApplicationReplyUrls = $webApp.api.web.redirectUris
+    
+    foreach ($replyUrl in $webApplicationReplyUrls) {
+        $replyUri = [Uri]::new($replyUrl)
+        if ($replyUri.Host -eq $spaReplyUri.Host -and $replyUri.Port -eq $spaReplyUri.Port) {
+            write-host "legacy webApplicationReplyUrls found. removing: $replyUrl"
+            $webApp.api.web.redirectUris = $webApp.api.web.redirectUris | where-object $psitem -ine $replyUrl
+            $migratingUrls.Add($replyUrl)
+        }
+    }
+
+    # current configuration should already be there
+    $webApplicationUris = $webApp.api.identifierUris
+    if (!($webApplicationUris  | where-object $psitem -ieq $WebApplicationUri)) {
+        write-error "webApplicationUris not found. adding: $WebApplicationUri"
+        $webApp.api.identifierUris += $WebApplicationUri
+    }    
+
+    # migrating/new configuration
+    foreach ($spaReplyUrl in $spaApplicationReplyUrls) {
+        foreach ($migratingUrl in $migratingUrls) {
+            $migratingUri = [Uri]::new($migratingUrl)
+            $spaReplyUri = [Uri]::new($spaReplyUrl)
+            if ($migratingUri.Host -eq $spaReplyUri.Host -and $migratingUri.Port -eq $spaReplyUri.Port) {
+                write-host "redirectUri found. skipping: $migratingUrl"
+            }
+            else {
+                write-host "redirectUri not found. adding: $SpaApplicationReplyUrl"
+                $webApp.api.spa.redirectUris += $SpaApplicationReplyUrl
+            }
+        }
+    }
+
+} 
 function enable-AAD() {
     Write-Host 'TenantId = ' $TenantId
     $ConfigObj.ClusterName = $clusterName
@@ -432,7 +472,10 @@ function enable-AAD() {
             -SpaApplicationReplyUrl $SpaApplicationReplyUrl `
             -requiredResourceAccess $requiredResourceAccess
     }
-
+    else {
+        write-host "web app already exists: $($webApp.appId)" -ForegroundColor Green
+        confirm-appRegistration -webApp $webApp
+    }
     assert-notNull $webApp 'Web Application Creation Failed'
     $ConfigObj.WebAppId = $webApp.appId
     Write-Host "Web Application Created: $($webApp.appId)"
