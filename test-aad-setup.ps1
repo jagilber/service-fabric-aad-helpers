@@ -20,14 +20,6 @@ $replyUrl = "https://$clusterName.$location.cloudapp.azure.com:19080/Explorer/in
 
 try{
     write-host "$(get-date) starting transcript $translog"
-    #start-transcript -path $translog
-    cd ./service-fabric-aad-helpers
-    
-    # if using cloud shell
-    # cd clouddrive 
-    # git clone https://github.com/Azure-Samples/service-fabric-aad-helpers
-    # cd service-fabric-aad-helpers
-    # code .
 
     #$webApplicationUri = 'https://mysftestcluster.contoso.com' # <--- must be verified domain due to AAD changes
     $webApplicationUri = "api://$tenantId/$clusterName" # <--- does not have to be verified domain
