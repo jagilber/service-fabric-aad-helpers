@@ -3,7 +3,7 @@
 Setup applications in a Service Fabric cluster Azure Active Directory tenant.
 
 .DESCRIPTION
-version: 2.0.1
+version: 2.0.2
 
 Prerequisites:
 1. An Azure Active Directory tenant.
@@ -405,19 +405,25 @@ function confirm-appRegistration($webApp) {
         $webApp.identifierUris += $WebApplicationUri
     }    
 
+    write-host "webApplicationUris after update: $($webApp.identifierUris|convertto-json)"
+
     # migrating/new configuration
-    foreach ($spaReplyUrl in $spaApplicationReplyUrls) {
-        foreach ($migratingUrl in $migratingUrls) {
-            $migratingUri = [Uri]::new($migratingUrl)
-            $spaReplyUri = [Uri]::new($spaReplyUrl)
-            if ($migratingUri.Host -eq $spaReplyUri.Host -and $migratingUri.Port -eq $spaReplyUri.Port) {
-                write-host "redirectUri found. skipping: $migratingUrl"
-            }
-            else {
-                write-host "redirectUri not found. adding: $SpaApplicationReplyUrl"
-                $webApp.spa.redirectUris += $SpaApplicationReplyUrl
-            }
+    $spaApplicationReplyUrls = $webApp.spa.redirectUris
+    if (!$spaApplicationReplyUrls) {
+        $spaApplicationReplyUrls = [collections.arraylist]::new()
+    }
+
+    foreach ($migratingUrl in $migratingUrls) {
+        if(!($spaApplicationReplyUrls -ieq $migratingUrl)) {
+            write-host "redirectUri not found. adding: $migratingUrl"
+            [void]$spaApplicationReplyUrls.Add($migratingUrl)
         }
+        else {
+            write-host "redirectUri found. skipping: $migratingUrl"
+        }
+
+        $webApp.spa.redirectUris += $SpaApplicationReplyUrls
+        write-host "spa redirectUris after update: $($webApp.spa.redirectUris|convertto-json)"
     }
 } 
 function enable-AAD() {
