@@ -135,7 +135,6 @@ Param
 $headers = $null
 . "$PSScriptRoot\Common.ps1"
 $graphAPIFormat = $resourceUrl + "/v1.0/" + $TenantId + "/{0}"
-$global:ConfigObj = @{}
 $sleepSeconds = 5
 $msGraphUserReadAppId = '00000003-0000-0000-c000-000000000000'
 $msGraphUserReadId = 'e1fe6dd8-ba31-4d61-89e7-88639da4683d'
@@ -143,10 +142,11 @@ $msGraphUserReadId = 'e1fe6dd8-ba31-4d61-89e7-88639da4683d'
 function main () {
     try {
         if ($logFile) {
-            Start-Transcript -path $logFile -Force
+            Start-Transcript -path $logFile -Force -InformationAction SilentlyContinue | Out-Null
         }
 
-        enable-AAD
+        $global:ConfigObj = enable-AAD
+        return $global:ConfigObj
     }
     catch [Exception] {
         $errorString = "exception: $($psitem.Exception.Response.StatusCode.value__)`r`nexception:`r`n$($psitem.Exception.Message)`r`n$($error | out-string)`r`n$($psitem.ScriptStackTrace)"
@@ -154,7 +154,7 @@ function main () {
     }
     finally {
         if ($logFile) {
-            Stop-Transcript
+            Stop-Transcript -InformationAction SilentlyContinue | Out-Null
         }
     }
 }
@@ -386,23 +386,23 @@ function confirm-appRegistration($webApp) {
     # cleanup legacy configuration reply urls?
     $spaReplyUri = [Uri]::new($SpaApplicationReplyUrl)
     $migratingUrls = [collections.arraylist]::new()
-    $migratingUrls.Add($SpaApplicationReplyUrl)
-    $webApplicationReplyUrls = $webApp.api.web.redirectUris
+    [void]$migratingUrls.Add($SpaApplicationReplyUrl)
+    $webApplicationReplyUrls = $webApp.web.redirectUris
     
     foreach ($replyUrl in $webApplicationReplyUrls) {
         $replyUri = [Uri]::new($replyUrl)
         if ($replyUri.Host -eq $spaReplyUri.Host -and $replyUri.Port -eq $spaReplyUri.Port) {
             write-host "legacy webApplicationReplyUrls found. removing: $replyUrl"
-            $webApp.api.web.redirectUris = $webApp.api.web.redirectUris | where-object $psitem -ine $replyUrl
-            $migratingUrls.Add($replyUrl)
+            $webApp.web.redirectUris = $webApp.web.redirectUris -ine $replyUrl
+            [void]$migratingUrls.Add($replyUrl)
         }
     }
 
     # current configuration should already be there
-    $webApplicationUris = $webApp.api.identifierUris
-    if (!($webApplicationUris  | where-object $psitem -ieq $WebApplicationUri)) {
+    $webApplicationUris = $webApp.identifierUris
+    if (!($webApplicationUris -ieq $WebApplicationUri)) {
         write-error "webApplicationUris not found. adding: $WebApplicationUri"
-        $webApp.api.identifierUris += $WebApplicationUri
+        $webApp.identifierUris += $WebApplicationUri
     }    
 
     # migrating/new configuration
@@ -415,11 +415,10 @@ function confirm-appRegistration($webApp) {
             }
             else {
                 write-host "redirectUri not found. adding: $SpaApplicationReplyUrl"
-                $webApp.api.spa.redirectUris += $SpaApplicationReplyUrl
+                $webApp.spa.redirectUris += $SpaApplicationReplyUrl
             }
         }
     }
-
 } 
 function enable-AAD() {
     Write-Host 'TenantId = ' $TenantId
@@ -515,8 +514,7 @@ function enable-AAD() {
     Write-Host "Native app service principal created: $($servicePrincipalNa.appId)" -ForegroundColor Green
 
     # check / add native app service principal AAD
-    $servicePrincipalAAD = add-servicePrincipalGrants -servicePrincipalNa $servicePrincipalNa `
-        -servicePrincipal $servicePrincipal
+    $servicePrincipalAAD = add-servicePrincipalGrants -servicePrincipalNa $servicePrincipalNa -servicePrincipal $servicePrincipal
 
     assert-notNull $servicePrincipalAAD 'aad app service principal configuration failed'
     Write-Host "AAD Application Configured: $($servicePrincipalAAD)"  -ForegroundColor Green

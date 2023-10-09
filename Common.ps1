@@ -358,8 +358,8 @@ if ($ClusterName) {
     $NativeClientApplicationName = $ClusterName + "_Client"
 }
 
-if (!$ConfigObj) {
-    $ConfigObj = @{
+if (!$global:ConfigObj) {
+    $global:ConfigObj = @{
         TenantId           = $TenantId
         ClusterName        = $ClusterName
         NativeClientAppId  = $null
