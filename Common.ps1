@@ -181,7 +181,6 @@ function get-RESTHeaders([guid]$tenantId,
         'ConsistencyLevel' = 'eventual'
     }
 
-    write-host "auth header: $($authHeader | convertto-json)"
     return $authHeader
 }
 
