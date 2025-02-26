@@ -80,12 +80,6 @@ PARAMETERS
         Used to add the cluster applications resource access to Entra application explicitly when AAD is not able to add
         automatically. This may happen when the user account does not have adequate permission under this subscription.
 
-    -AddVisualStudioAccess [<SwitchParameter>]
-        Used to add the Visual Studio MSAL client ids to the cluster application
-            'https://learn.microsoft.com/en-us/azure/service-fabric/service-fabric-manage-application-in-visual-studio'
-            Visual Studio 2022 and future versions: '04f0c124-f2bc-4f59-8241-bf6df9866bbd'
-            Visual Studio 2019 and earlier: '872cd9fa-d31f-45e0-9eab-6e460a02d1f1'
-
     -SignInAudience <String>
         Sign in audience option for selection of Applicaiton AAD tenant configuration type. Default selection is 'AzureADMyOrg'
         'AzureADMyOrg', 'AzureADMultipleOrgs', 'AzureADandPersonalMicrosoftAccount'
@@ -141,8 +135,7 @@ PARAMETERS
     PS > .\SetupApplications.ps1 -TenantId '4f812c74-978b-4b0e-acf5-06ffca635c0e' `
             -WebApplicationUri 'api://4f812c74-978b-4b0e-acf5-06ffca635c0e/mycluster' `
             -SpaApplicationReplyUrl 'https://mycluster.westus.cloudapp.azure.com:19080/explorer/index.html' `
-            -AddResourceAccess `
-            -AddVisualStudioAccess
+            -AddResourceAccess
 
     Setup tenant with explicit application settings and add explicit resource access to Entra application.
 ```

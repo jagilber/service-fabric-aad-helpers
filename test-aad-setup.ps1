@@ -6,8 +6,8 @@
     requires test service fabric cluster
     requires admin access to azure ad / entra / graph
 
-    Typical usage: .\test-aad-setup.ps1 -resourceGroupName 'myrg' -clusterName 'mysfcluster' -setupReadonlyUser -setupAdminUser -setupClusterResource -addVisualStudioAccess
-        executes: .\SetupApplications.ps1 -TenantId $tenantId -ClusterName $clusterName -SpaApplicationReplyUrl $replyUrl -AddResourceAccess -WebApplicationUri $webApplicationUri -AddVisualStudioAccess:$addVisualStudioAccess -logFile $translog -Verbose -force:$force -remove:$remove
+    Typical usage: .\test-aad-setup.ps1 -resourceGroupName 'myrg' -clusterName 'mysfcluster' -setupReadonlyUser -setupAdminUser -setupClusterResource
+        executes: .\SetupApplications.ps1 -TenantId $tenantId -ClusterName $clusterName -SpaApplicationReplyUrl $replyUrl -AddResourceAccess -WebApplicationUri $webApplicationUri -logFile $translog -Verbose -force:$force -remove:$remove
         executes: .\SetupUser.ps1 -ConfigObj $ConfigObj -UserName 'TestReadOnly' -Password 'P@ssword!123' -IsReadOnly -Verbose -logFile $translog -remove:$remove -force:$force
         executes: .\SetupUser.ps1 -ConfigObj $ConfigObj -UserName 'TestAdmin' -Password 'P@ssword!123' -IsAdmin -Verbose -logFile $translog -remove:$remove -force:$force
         executes: .\SetupClusterResource.ps1 -resourceGroupName $resourceGroupName -ConfigObj $($ConfigObj | convertto-json -depth 99)
@@ -22,10 +22,6 @@
     .\test-aad-setup.ps1 -resourceGroupName 'myrg' -clusterName 'mysfcluster' -setupReadonlyUser -setupAdminUser
 .EXAMPLE
     .\test-aad-setup.ps1 -resourceGroupName 'myrg' -clusterName 'mysfcluster' -setupReadonlyUser -setupAdminUser -setupClusterResource
-.EXAMPLE
-    .\test-aad-setup.ps1 -resourceGroupName 'myrg' -clusterName 'mysfcluster' -setupReadonlyUser -setupAdminUser -setupClusterResource -addVisualStudioAccess
-.EXAMPLE
-    .\test-aad-setup.ps1 -resourceGroupName 'myrg' -clusterName 'mysfcluster' -setupReadonlyUser -setupAdminUser -setupClusterResource -addVisualStudioAccess -MGClientId '14d82eec-204b-4c2f-b7e8-296a70dab67e' -MGClientSecret 'mysecret'
 .PARAMETER resourceGroupName
     resource group name of the test cluster
 .PARAMETER tenantId
@@ -38,8 +34,6 @@
     setup test admin user 'TestAdmin' with read / write access to cluster
 .PARAMETER setupClusterResource
     setup cluster resource with new application registration client id
-.PARAMETER addVisualStudioAccess
-    add visual studio application registration ids to the cluster resource for deployment access from visual studio
 .PARAMETER remove
     remove
 .PARAMETER force
@@ -61,7 +55,6 @@ param(
     [switch]$setupClusterResource,
     [switch]$remove,
     [switch]$force,
-    [switch]$addVisualStudioAccess,
     [guid]$MGClientId = '14d82eec-204b-4c2f-b7e8-296a70dab67e', # well-known ps graph client id generated on connect
     [string]$MGClientSecret = $null,
     [string]$MGGrantType = 'urn:ietf:params:oauth:grant-type:device_code' #'client_credentials', #'authorization_code'
@@ -142,7 +135,6 @@ function setup-application() {
     -AddResourceAccess ``
     -WebApplicationUri $webApplicationUri ``
     -logFile $translog ``
-    -AddVisualStudioAccess:`$$addVisualStudioAccess ``
     -Verbose ``
     -force:`$$force ``
     -remove:`$$remove
@@ -153,7 +145,6 @@ function setup-application() {
         -SpaApplicationReplyUrl $replyUrl `
         -AddResourceAccess `
         -WebApplicationUri $webApplicationUri `
-        -AddVisualStudioAccess:$addVisualStudioAccess `
         -logFile $translog `
         -Verbose `
         -force:$force `
@@ -169,7 +160,6 @@ function setup-applicationMG() {
     -AddResourceAccess ``
     -WebApplicationUri $webApplicationUri ``
     -logFile $translog ``
-    -AddVisualStudioAccess:`$$addVisualStudioAccess ``
     -Verbose ``
     -force:`$$force ``
     -remove:`$$remove ``
@@ -183,7 +173,6 @@ function setup-applicationMG() {
         -SpaApplicationReplyUrl $replyUrl `
         -AddResourceAccess `
         -WebApplicationUri $webApplicationUri `
-        -AddVisualStudioAccess:$addVisualStudioAccess `
         -logFile $translog `
         -Verbose `
         -force:$force `
