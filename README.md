@@ -15,12 +15,13 @@ PowerShell scripts for setting up Azure Active Directory (AAD/Entra) to authenti
 
 ## Features
 
-This repo provides the following scripts for Entra:
+This repo provides the following scripts for Entra that can configure the following:
 
 * Create Entra applications (web, native) to control access to your Service Fabric cluster
 * Delete existing Entra applications (web, native) for controlling your cluster
 * Create a new Entra user
 * Delete an existing Entra user
+* Add Visual Studio client ids to the cluster application for MSAL authentication
 
 ## Getting Started
 
@@ -43,8 +44,6 @@ $ConfigObj = .\SetupApplications.ps1 -TenantId '<tenant_id>' `
 ```
 
 ### SetupApplications Parameters
-
-<details><summary>Click to expand</summary>
 
 ```powershell
 >help .\SetupApplications.ps1 -full
@@ -147,8 +146,6 @@ PARAMETERS
     Setup tenant with explicit application settings and add explicit resource access to Entra application.
 ```
 
-</details>
-
 Running the script will prompt you to sign in to an account with admin privileges for the Entra tenant. Once signed in, the script will create the web and native applications to represent your Service Fabric cluster. The script will also print the JSON required by the Azure Resource Manager template when you go on to [create your Service Fabric cluster](https://docs.microsoft.com/en-us/azure/service-fabric/service-fabric-cluster-creation-create-template#add-entra-configuration-to-use-entra-for-client-access), so be sure to save it somewhere.
 
 ### Create Entra users
@@ -177,8 +174,6 @@ $ConfigObj = .\SetupApplications.ps1 -TenantId '<tenant_id>' -ClusterName '<clus
 ```
 
 ### SetupUser Parameters
-
-<details><summary>Click to expand</summary>
 
 ```powershell
 >help .\SetupUser.ps1 -full
@@ -235,8 +230,6 @@ PARAMETERS
     Setup up an admin user providing values for parameters
 ```
 
-</details>
-
 ### Update an existing Entra Application
 
 Update an existing Entra Application to migrate the web redirect URIs to SPA redirect URIs.
@@ -257,8 +250,6 @@ The webApplicationId can be found in azure portal by checking the Application (c
 ```
 
 ### UpdateApplication Parameters
-
-<details><summary>Click to expand</summary>
 
 ```powershell
 >help .\UpdateApplication.ps1 -full
@@ -292,8 +283,6 @@ PARAMETERS
         -WhatIf
 ```
 
-</details>
-
 ## Update an existing Cluster
 
 Run **SetupClusterResource.ps1** to update an existing cluster that was created without Entra, using the `$ConfigObj` returned when [creating your Entra applications](#create-entra-applications). For example:
@@ -307,8 +296,6 @@ $ConfigObj = .\SetupClusterResource.ps1 -TenantId '<tenant_id>' `
 ```
 
 ### SetupClusterResource Parameters
-
-<details><summary>Click to expand</summary>
 
 ```powershell
 >help .\SetupClusterResource.ps1 -full
@@ -359,8 +346,6 @@ PARAMETERS
             -clusterName 'mysftestcluster'
 ```
 
-</details>
-
 ## Resources
 
 * [Service Fabric: Set up Microsoft Entra ID for client authentication](https://learn.microsoft.com/azure/service-fabric/service-fabric-cluster-creation-setup-aad)
@@ -368,3 +353,5 @@ PARAMETERS
 * [Service Fabric: Set up Microsoft Entra ID for client authentication in the Azure portal](https://learn.microsoft.com/azure/service-fabric/service-fabric-cluster-creation-setup-azure-ad-via-portal)
 
 * [Active Directory: Set up a dev environment](https://learn.microsoft.com/azure/active-directory/develop/quickstart-create-new-tenant)
+
+* [Use Visual Studio to simplify writing and managing your Service Fabric applications](https://learn.microsoft.com/azure/service-fabric/service-fabric-manage-application-in-visual-studio)

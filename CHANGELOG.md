@@ -19,6 +19,7 @@
       https://learn.microsoft.com/en-us/azure/service-fabric/service-fabric-manage-application-in-visual-studio
       Visual Studio 2022 and future versions: 04f0c124-f2bc-4f59-8241-bf6df9866bbd
       Visual Studio 2019 and earlier: 872cd9fa-d31f-45e0-9eab-6e460a02d1f1
+  Resolves error: AADSTS65001: The user or administrator has not consented to use the application with ID '04f0c124-f2bc-4f59-8241-bf6df9866bbd' named 'Visual Studio'.
 
 ### 22-08-23 v2.0
 
