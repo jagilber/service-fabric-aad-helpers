@@ -37,6 +37,12 @@ Used to set metadata for specific region (for example: china, germany). Ignore i
 .PARAMETER AddResourceAccess
 Used to add the cluster applications resource access to Entra application explicitly when AAD is not able to add automatically. This may happen when the user account does not have adequate permission under this subscription.
 
+.PARAMETER AddVisualStudioAccess
+Used to add the Visual Studio MSAL client ids to the cluster application
+    'https://learn.microsoft.com/en-us/azure/service-fabric/service-fabric-manage-application-in-visual-studio'
+    Visual Studio 2022 and future versions: '04f0c124-f2bc-4f59-8241-bf6df9866bbd'
+    Visual Studio 2019 and earlier: '872cd9fa-d31f-45e0-9eab-6e460a02d1f1'
+
 .PARAMETER SignInAudience
 Sign in audience option for selection of Applicaiton AAD tenant configuration type. Default selection is 'AzureADMyOrg'
 'AzureADMyOrg', 'AzureADMultipleOrgs', 'AzureADandPersonalMicrosoftAccount'
@@ -91,7 +97,8 @@ Setup and save the setup result into a temporary variable to pass into SetupUser
 .\SetupApplications.ps1 -TenantId '4f812c74-978b-4b0e-acf5-06ffca635c0e' `
         -WebApplicationUri 'api://4f812c74-978b-4b0e-acf5-06ffca635c0e/mycluster' `
         -SpaApplicationReplyUrl 'https://mycluster.westus.cloudapp.azure.com:19080/explorer/index.html' `
-        -AddResourceAccess 
+        -AddResourceAccess `
+        -AddVisualStudioAccess
 
 Setup tenant with explicit application settings and add explicit resource access to Entra application.
 #>
@@ -135,6 +142,11 @@ Param
     [Parameter(ParameterSetName = 'Prefix')]
     [Switch]
     $AddResourceAccess,
+
+    [Parameter(ParameterSetName = 'Customize')]
+    [Parameter(ParameterSetName = 'Prefix')]
+    [Switch]
+    $AddVisualStudioAccess,
 
     [Parameter(ParameterSetName = 'Customize')]
     [Parameter(ParameterSetName = 'Prefix')]
@@ -467,6 +479,41 @@ function add-servicePrincipalGrantScope($clientId, $resourceId, $scope) {
     }
 
     return $result
+}
+
+function confirm-visualStudioAccess($webApp, [guid]$oauthPermissionsId) {
+    $preAuthorizedApplications = get-preauthorizedApplications -webApp $webApp -applicationIds $visualStudioClientIds -delegatedPermissionIds @($oauthPermissionsId)
+    if ($preAuthorizedApplications) {
+        write-host "visual studio preauthorized applications already exists."
+        # todo: should we remove if $AddVisualStudioAccess is false?
+        if (!$AddVisualStudioAccess) {
+            $remove = $true
+
+            if (!$Force) {
+                $remove = (read-host "Do you want to remove visual studio preauthorized applications? (y/n)") -ieq 'y'
+            }
+
+            if ($remove) {
+                write-host "removing visual studio preauthorized applications" -ForegroundColor Yellow
+                remove-preauthorizedApplications -webApp $webApp -applicationIds $visualStudioClientIds -delegatedPermissionIds @($oauthPermissionsId)
+                return
+            }
+        }
+    }
+    else {
+        write-host "visual studio preauthorized applications do not exist."
+    }
+
+    if (!$preAuthorizedApplications -and $AddVisualStudioAccess) {
+        write-host "adding visual studio preauthorized applications" -ForegroundColor Green
+        # check / add preauthorized applications
+        $preAuthorizedApplications = add-preauthorizedApplications -webApp $webApp -applicationIds $visualStudioClientIds -delegatedPermissionIds @($oauthPermissionsId)
+        assert-notNull $preAuthorizedApplications 'Web Application preauthorized applications Failed'
+        Write-Host "Web Application preauthorized applications created: $($preAuthorizedApplications|convertto-json)"  -ForegroundColor Green
+    }
+    else {
+        write-host "visual studio preauthorized applications not do not need to be modified." -ForegroundColor Yellow
+    }
 }
 
 function get-appRegistration($WebApplicationUri) {
@@ -805,6 +852,9 @@ function setup-Applications() {
     }
     assert-notNull $oauthPermissionsId 'Web Application Oauth permissions Failed'
     Write-Host "Web Application Oauth permissions created: $($oauthPermissionsId|convertto-json)"  -ForegroundColor Green
+
+    # check / add visual studio preauthorized applications
+    confirm-visualStudioAccess -webApp $webApp -oauthPermissionsId $oauthPermissionsId
 
     # check / add servicePrincipal
     $servicePrincipal = get-servicePrincipal -webApp $webApp
